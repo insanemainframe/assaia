@@ -44,11 +44,19 @@ def test_win_horizontal(game_state):
 
 
 def test_win_diagonal(game_state):
-    for i in range((game_state.win_condition - 1) * 2):
-        player = i % 2
-        game_state.make_throw(player, i)
+    game_state = GameState(win_condition=3)
 
-    game_state.make_throw(0, i + 1)
+    game_state.make_throw(0, 0)
+    game_state.make_throw(1, 0)
+
+    game_state.make_throw(0, 1)
+    game_state.make_throw(1, 1)
+
+    winner = game_state.make_throw(0, 2)
+    assert winner == 0
+
+    with pytest.raises(RuntimeError, match='already won'):
+        winner = game_state.make_throw(1, 2)
 
 
 def test_column_busy(game_state):

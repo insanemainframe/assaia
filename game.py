@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 
 class GameExcpetion(Exception):
     pass
@@ -16,6 +18,7 @@ class GameState:
         self.y = y
         self.win_condition = win_condition
         self.player_num = player_num
+        self._rounds = 0
 
         self.ground = [[None] * self.x for i in range(self.y)]
         self.players = list(range(self.player_num))
@@ -60,66 +63,61 @@ class GameState:
         if free_cell_y is None:
             raise GameExcpetion('column is busy')
         self.ground[free_cell_y][x] = player
-        if self._check_win(x):
+        self._rounds += 1
+        if self._check_win_round(free_cell_y, x):
             self.winner = player
             return self.winner
         self._switch_player()
 
     def _check_not_full(self):
-        if not any(cell is None for row in self.ground for cell in row):
+        if self._rounds >= self.x * self.y:
             raise GameExcpetion('ground is full')
 
-    def _get_win_cords(self):
-        yield from self._get_vertical_cords()
-        yield from self._get_horizontal_cords()
-        yield from self._get_diagonal_cords()
+    def filter_cords(self, y_x):
+        y, x = y_x
+        return (0 <= x < self.x) and (0 <= y < self.y)
 
-    def _get_vertical_cords(self):
-        for y in range(self.y):
-            yield [(y, x) for x in range(self.x)]
+    def _get_win_cords(self, y, x):
+        """
+        выдает линии, приводящие к победе
+        """
+        def get_value(op, v, i):
+            if not op:
+                return v
+            if op > 0:
+                return v + i
+            else:
+                return v - i
 
-    def _get_horizontal_cords(self):
-        for x in range(self.x):
-            yield [(y, x) for y in range(self.y)]
+        for op_x in [-1, 0, 1]:
+            for op_y in [-1, 0, 1]:
+                if op_y == op_x == 0:
+                    continue
+                cords = [
+                    (get_value(op_y, y, i), get_value(op_x, x, i))
+                    for i in range(self.win_condition)
+                    if (
+                        0 <= get_value(op_y, y, i) < self.y
+                        and 0 <= get_value(op_x, x, i) < self.x
+                    )
+                ]
+                if len(cords) >= self.win_condition:
+                    yield cords
 
-    def _get_diagonal_cords(self):
-        def filter_cords(y_x):
-            y, x = y_x
-            return (0 <= x < self.x) and (0 <= y < self.y)
+    def _check_win_round(self, y, x):
+        for cords in self._get_win_cords(y, x):
+            if self._check_win_cords(cords):
+                return True
 
-        for x in range(self.x):
-            cords = [(y, x + y) for y in range(self.y)]
-            cords = list(filter(filter_cords, cords))
-            if len(cords) >= self.win_condition:
-                yield tuple(cords)
-            cords = [(y, x - y) for y in range(self.y)]
-            cords = list(filter(filter_cords, cords))
-            if len(cords) >= self.win_condition:
-                yield tuple(cords)
-
-        for y in range(self.y):
-            cords = [(y + x, x) for x in range(self.x)]
-            cords = list(filter(filter_cords, cords))
-            if len(cords) >= self.win_condition:
-                yield tuple(cords)
-            cords = [(y - x, x) for x in range(self.x)]
-            cords = list(filter(filter_cords, cords))
-            if len(cords) >= self.win_condition:
-                yield tuple(cords)
-
-    def _check_win(self, x):
-        for cords in self._get_win_cords():
-            last_player = None
-            counter = 0
-            for y, x in cords:
-                cell = self.ground[y][x]
-                if last_player is None or last_player != cell:
-                    last_player = cell
-                    counter = 1
-                else:
-                    counter += 1
-                    if counter >= self.win_condition:
-                        return True
+    def _check_win_cords(self, cords):
+        last_cell = None
+        for y, x in cords:
+            cell = self.ground[y][x]
+            if last_cell is None:
+                last_cell = cell
+            if last_cell != cell:
+                return False
+        return True
 
     def _get_free_cell(self, x: int):
         for y in range(self.y):
