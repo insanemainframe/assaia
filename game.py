@@ -81,28 +81,13 @@ class GameState:
         """
         выдает линии, приводящие к победе
         """
-        def get_value(op, v, i):
-            if not op:
-                return v
-            if op > 0:
-                return v + i
-            else:
-                return v - i
+        def filter_line(cords):
+            return list(filter(self.filter_cords, cords))
 
-        for op_x in [-1, 0, 1]:
-            for op_y in [-1, 0, 1]:
-                if op_y == op_x == 0:
-                    continue
-                cords = [
-                    (get_value(op_y, y, i), get_value(op_x, x, i))
-                    for i in range(self.win_condition)
-                    if (
-                        0 <= get_value(op_y, y, i) < self.y
-                        and 0 <= get_value(op_x, x, i) < self.x
-                    )
-                ]
-                if len(cords) >= self.win_condition:
-                    yield cords
+        yield filter_line((y - i, x + i) for i in range(-self.win_condition, self.win_condition))
+        yield filter_line((y + i, x - i) for i in range(-self.win_condition, self.win_condition))
+        yield filter_line((y, x + i) for i in range(-self.win_condition, self.win_condition))
+        yield filter_line((y + i, x) for i in range(-self.win_condition, self.win_condition))
 
     def _check_win_round(self, y, x):
         for cords in self._get_win_cords(y, x):
@@ -111,13 +96,19 @@ class GameState:
 
     def _check_win_cords(self, cords):
         last_cell = None
+        counter = 0
         for y, x in cords:
             cell = self.ground[y][x]
             if last_cell is None:
                 last_cell = cell
-            if last_cell != cell:
-                return False
-        return True
+                counter = 1
+            elif last_cell == cell:
+                counter += 1
+            else:
+                last_cell = cell
+                counter = 1
+            if counter >= self.win_condition:
+                return True
 
     def _get_free_cell(self, x: int):
         for y in range(self.y):
