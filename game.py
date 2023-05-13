@@ -83,15 +83,29 @@ class GameState:
             yield [(y, x) for y in range(self.y)]
 
     def _get_diagonal_cords(self):
+        def filter_cords(y_x):
+            y, x = y_x
+            return (0 <= x < self.x) and (0 <= y < self.y)
+
         for x in range(self.x):
             cords = [(y, x + y) for y in range(self.y)]
-            if len(cords) <= self.win_condition:
-                yield cords
+            cords = list(filter(filter_cords, cords))
+            if len(cords) >= self.win_condition:
+                yield tuple(cords)
+            cords = [(y, x - y) for y in range(self.y)]
+            cords = list(filter(filter_cords, cords))
+            if len(cords) >= self.win_condition:
+                yield tuple(cords)
 
         for y in range(self.y):
-            cords = [(y + x, x) for y in range(self.x)]
-            if len(cords) <= self.win_condition:
-                yield cords
+            cords = [(y + x, x) for x in range(self.x)]
+            cords = list(filter(filter_cords, cords))
+            if len(cords) >= self.win_condition:
+                yield tuple(cords)
+            cords = [(y - x, x) for x in range(self.x)]
+            cords = list(filter(filter_cords, cords))
+            if len(cords) >= self.win_condition:
+                yield tuple(cords)
 
     def _check_win(self, x):
         for cords in self._get_win_cords():
@@ -140,6 +154,7 @@ class UI:
             try:
                 winner = self.game_state.make_throw(current_player, throw_x)
                 if winner is not None:
+                    print(self.game_state)
                     print(f'player {winner} win!')
                     return
             except GameExcpetion as e:
